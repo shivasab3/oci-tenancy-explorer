@@ -20,6 +20,8 @@ The application is intentionally lightweight:
 
 OCI credentials stay on the host running the collectors and are never exposed to browser JavaScript.
 
+If you are using Codex or another coding agent in this repo, start with [AGENTS.md](AGENTS.md). It captures the current local run model, OCI auth patterns, snapshot flow, feature toggles, and the expected path for adding new capabilities.
+
 ## Current App Surface
 
 OCI Tenancy Explorer currently includes:
@@ -51,6 +53,8 @@ OCI Tenancy Explorer currently includes:
   Builds `fleet_data_announcements.json` for Console Announcements.
 - `portal_server.py`
   Serves the app locally and exposes refresh/status endpoints used by the UI.
+- `app_config.json`
+  Controls app-level experimental feature flags under `experimental-features`, such as whether `Tenancy Overview`, `Shape Explorer`, `Opportunities`, and `Console Announcements` are visible in the UI and included in `Sync Data` where applicable.
 - `oci_config.example`
   Example OCI SDK config.
 

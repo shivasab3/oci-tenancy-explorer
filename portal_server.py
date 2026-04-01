@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import threading
@@ -42,13 +43,70 @@ FLEET_JSON = ROOT / "fleet_data.json"
 OPPORTUNITIES_JSON = ROOT / "fleet_data_opportunities.json"
 SHAPES_JSON = ROOT / "fleet_data_shapes.json"
 ANNOUNCEMENTS_JSON = ROOT / "fleet_data_announcements.json"
+APP_CONFIG_JSON = ROOT / "app_config.json"
 UTC = timezone.utc
 EVENT_PREFIX = "__OTX_EVENT__ "
 SUPPORTED_RESOURCE_TYPES = {"instance", "vnic", "subnet", "vcn", "volume", "bootvolume", "compartment"}
+DEFAULT_APP_CONFIG = {
+    "experimental-features": {
+        "overview": False,
+        "shapes": True,
+        "opportunities": True,
+        "announcements": True,
+    }
+}
 
 
 def utc_now_iso() -> str:
     return datetime.now(tz=UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def slugify_url_prefix(value: str) -> str:
+    normalized = re.sub(r"[^a-z0-9]+", "-", (value or "").strip().lower()).strip("-")
+    return normalized or "portal"
+
+
+def detect_git_branch_slug() -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", "branch", "--show-current"],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except Exception:
+        return None
+    branch = (result.stdout or "").strip()
+    return slugify_url_prefix(branch) if branch else None
+
+
+def load_app_config() -> dict[str, Any]:
+    config = json.loads(json.dumps(DEFAULT_APP_CONFIG))
+    try:
+        payload = json.loads(APP_CONFIG_JSON.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return config
+    except Exception:
+        return config
+
+    if not isinstance(payload, dict):
+        return config
+
+    feature_flags = payload.get("experimental-features")
+    if not isinstance(feature_flags, dict):
+        feature_flags = payload.get("features")
+    if isinstance(feature_flags, dict):
+        config["experimental-features"].update({
+            key: bool(value)
+            for key, value in feature_flags.items()
+            if key in config["experimental-features"]
+        })
+    return config
+
+
+def feature_enabled(config: dict[str, Any], key: str) -> bool:
+    return bool(config.get("experimental-features", {}).get(key, DEFAULT_APP_CONFIG["experimental-features"].get(key, True)))
 
 
 @dataclass
@@ -388,12 +446,13 @@ class SyncRunner:
         self.step_definitions = step_definitions
         self.state = SyncState()
 
-    def start(self) -> tuple[bool, str]:
+    def start(self, step_definitions: list[SyncStepDefinition] | None = None) -> tuple[bool, str]:
         with self.state.lock:
             if self.state.running:
                 return False, "Sync already in progress."
-        self.state.reset(self.step_definitions)
-        threading.Thread(target=self._run_sync, daemon=True).start()
+        active_steps = step_definitions or self.step_definitions
+        self.state.reset(active_steps)
+        threading.Thread(target=self._run_sync, args=(active_steps,), daemon=True).start()
         return True, "Sync started."
 
     def _build_command(self, step: SyncStepDefinition) -> list[str]:
@@ -411,12 +470,12 @@ class SyncRunner:
             command.extend(["--auth", self.auth])
         return command
 
-    def _run_sync(self) -> None:
+    def _run_sync(self, step_definitions: list[SyncStepDefinition]) -> None:
         overall_exit_code = 0
         saw_non_fleet_failure = False
-        self.state.append(f"[{utc_now_iso()}] Launching unified data sync across {len(self.step_definitions)} snapshot(s)")
+        self.state.append(f"[{utc_now_iso()}] Launching unified data sync across {len(step_definitions)} snapshot(s)")
 
-        for index, step in enumerate(self.step_definitions, start=1):
+        for index, step in enumerate(step_definitions, start=1):
             started_at = utc_now_iso()
             step_state = self.state.update_step(
                 step.key,
@@ -427,7 +486,7 @@ class SyncRunner:
             )
             self.state.set_current_step(step_state)
             command = self._build_command(step)
-            self.state.append(f"[{utc_now_iso()}] Starting step {index}/{len(self.step_definitions)}: {step.label}")
+            self.state.append(f"[{utc_now_iso()}] Starting step {index}/{len(step_definitions)}: {step.label}")
             self.state.append(f"[{utc_now_iso()}] Command ({step.label}): {' '.join(command)}")
 
             try:
@@ -1019,6 +1078,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--profile", default="DEFAULT")
     parser.add_argument("--config-file", default=str(Path("~/.oci/config").expanduser()))
     parser.add_argument("--auth", choices=["config", "instance_principal"], default="config")
+    parser.add_argument("--url-prefix", default="")
     return parser.parse_args()
 
 
@@ -1029,8 +1089,27 @@ def make_handler(
     announcements_runner: RefreshRunner,
     sync_runner: SyncRunner,
     resource_lookup_service: ResourceLookupService,
+    url_prefix: str,
 ):
+    def current_app_config() -> dict[str, Any]:
+        return load_app_config()
+
+    def enabled_sync_steps() -> list[SyncStepDefinition]:
+        config = current_app_config()
+        filtered_steps: list[SyncStepDefinition] = []
+        for step in sync_runner.step_definitions:
+            if step.key == "shapes" and not feature_enabled(config, "shapes"):
+                continue
+            if step.key == "opportunities" and not feature_enabled(config, "opportunities"):
+                continue
+            if step.key == "announcements" and not feature_enabled(config, "announcements"):
+                continue
+            filtered_steps.append(step)
+        return filtered_steps
+
     class PortalHandler(SimpleHTTPRequestHandler):
+        normalized_prefix = f"/{url_prefix}" if url_prefix else ""
+
         def _any_single_refresh_running(self) -> bool:
             return any(
                 runner.state.snapshot().get("running")
@@ -1040,33 +1119,71 @@ def make_handler(
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             super().__init__(*args, directory=str(ROOT), **kwargs)
 
-        def do_GET(self) -> None:
+        def _normalize_request_path(self) -> tuple[str, str]:
             parsed = urlparse(self.path)
-            query = parse_qs(parsed.query or "")
-            if parsed.path == "/api/refresh/status":
+            path = parsed.path or "/"
+
+            if self.normalized_prefix and path == self.normalized_prefix:
+                path = f"{self.normalized_prefix}/"
+
+            if self.normalized_prefix and path.startswith(f"{self.normalized_prefix}/"):
+                stripped = path[len(self.normalized_prefix):] or "/"
+                normalized = stripped if stripped.startswith("/") else f"/{stripped}"
+                return normalized, parsed.query or ""
+
+            return path, parsed.query or ""
+
+        def _set_normalized_path(self, path: str, query: str) -> None:
+            self.path = f"{path}?{query}" if query else path
+
+        def _redirect_to_prefixed_index(self) -> None:
+            target = f"{self.normalized_prefix}/index.html"
+            self.send_response(HTTPStatus.TEMPORARY_REDIRECT)
+            self.send_header("Location", target)
+            self.end_headers()
+
+        def _feature_disabled_response(self, label: str) -> None:
+            self._send_json(
+                {
+                    "started": False,
+                    "message": f"{label} is currently disabled by app_config.json.",
+                    "logs": [f"{label} is currently disabled by app_config.json."],
+                    "lastExitCode": 1,
+                },
+                status=HTTPStatus.CONFLICT,
+            )
+
+        def do_GET(self) -> None:
+            normalized_path, query_string = self._normalize_request_path()
+            query = parse_qs(query_string)
+            if self.normalized_prefix and normalized_path in {"/", "/index.html"} and self.path in {"/", "/index.html"}:
+                self._redirect_to_prefixed_index()
+                return
+            if normalized_path == "/api/refresh/status":
                 self._send_json(fleet_runner.state.snapshot())
                 return
-            if parsed.path == "/api/opportunities/status":
+            if normalized_path == "/api/opportunities/status":
                 self._send_json(opportunities_runner.state.snapshot())
                 return
-            if parsed.path == "/api/shapes/status":
+            if normalized_path == "/api/shapes/status":
                 self._send_json(shapes_runner.state.snapshot())
                 return
-            if parsed.path == "/api/announcements/status":
+            if normalized_path == "/api/announcements/status":
                 self._send_json(announcements_runner.state.snapshot())
                 return
-            if parsed.path == "/api/sync/status":
+            if normalized_path == "/api/sync/status":
                 self._send_json(sync_runner.state.snapshot())
                 return
-            if parsed.path == "/api/resource/lookup":
+            if normalized_path == "/api/resource/lookup":
                 ocid = (query.get("ocid") or [""])[0]
                 self._send_json(resource_lookup_service.lookup(ocid))
                 return
+            self._set_normalized_path(normalized_path, query_string)
             super().do_GET()
 
         def do_POST(self) -> None:
-            parsed = urlparse(self.path)
-            if parsed.path == "/api/refresh":
+            normalized_path, _query_string = self._normalize_request_path()
+            if normalized_path == "/api/refresh":
                 if sync_runner.state.snapshot().get("running"):
                     self._send_json({"started": False, "message": "Unified sync is already in progress.", **fleet_runner.state.snapshot()}, status=HTTPStatus.CONFLICT)
                     return
@@ -1074,7 +1191,10 @@ def make_handler(
                 status = HTTPStatus.ACCEPTED if started else HTTPStatus.CONFLICT
                 self._send_json({"started": started, "message": message, **fleet_runner.state.snapshot()}, status=status)
                 return
-            if parsed.path == "/api/opportunities/refresh":
+            if normalized_path == "/api/opportunities/refresh":
+                if not feature_enabled(current_app_config(), "opportunities"):
+                    self._feature_disabled_response("Opportunities")
+                    return
                 if sync_runner.state.snapshot().get("running"):
                     self._send_json({"started": False, "message": "Unified sync is already in progress.", **opportunities_runner.state.snapshot()}, status=HTTPStatus.CONFLICT)
                     return
@@ -1082,7 +1202,10 @@ def make_handler(
                 status = HTTPStatus.ACCEPTED if started else HTTPStatus.CONFLICT
                 self._send_json({"started": started, "message": message, **opportunities_runner.state.snapshot()}, status=status)
                 return
-            if parsed.path == "/api/shapes/refresh":
+            if normalized_path == "/api/shapes/refresh":
+                if not feature_enabled(current_app_config(), "shapes"):
+                    self._feature_disabled_response("Shape Explorer")
+                    return
                 if sync_runner.state.snapshot().get("running"):
                     self._send_json({"started": False, "message": "Unified sync is already in progress.", **shapes_runner.state.snapshot()}, status=HTTPStatus.CONFLICT)
                     return
@@ -1090,7 +1213,10 @@ def make_handler(
                 status = HTTPStatus.ACCEPTED if started else HTTPStatus.CONFLICT
                 self._send_json({"started": started, "message": message, **shapes_runner.state.snapshot()}, status=status)
                 return
-            if parsed.path == "/api/announcements/refresh":
+            if normalized_path == "/api/announcements/refresh":
+                if not feature_enabled(current_app_config(), "announcements"):
+                    self._feature_disabled_response("Console Announcements")
+                    return
                 if sync_runner.state.snapshot().get("running"):
                     self._send_json({"started": False, "message": "Unified sync is already in progress.", **announcements_runner.state.snapshot()}, status=HTTPStatus.CONFLICT)
                     return
@@ -1098,12 +1224,12 @@ def make_handler(
                 status = HTTPStatus.ACCEPTED if started else HTTPStatus.CONFLICT
                 self._send_json({"started": started, "message": message, **announcements_runner.state.snapshot()}, status=status)
                 return
-            if parsed.path == "/api/sync/refresh":
+            if normalized_path == "/api/sync/refresh":
                 if self._any_single_refresh_running() or sync_runner.state.snapshot().get("running"):
                     snapshot = sync_runner.state.snapshot()
                     self._send_json({"started": False, "message": "Another refresh is already in progress.", **snapshot}, status=HTTPStatus.CONFLICT)
                     return
-                started, message = sync_runner.start()
+                started, message = sync_runner.start(enabled_sync_steps())
                 status = HTTPStatus.ACCEPTED if started else HTTPStatus.CONFLICT
                 self._send_json({"started": started, "message": message, **sync_runner.state.snapshot()}, status=status)
                 return
@@ -1126,6 +1252,7 @@ def make_handler(
 
 def main() -> int:
     args = parse_args()
+    url_prefix = slugify_url_prefix(args.url_prefix) if args.url_prefix else (detect_git_branch_slug() or slugify_url_prefix(ROOT.name))
     fleet_runner = RefreshRunner(
         profile=args.profile,
         config_file=args.config_file,
@@ -1174,10 +1301,20 @@ def main() -> int:
         config_file=args.config_file,
         auth=args.auth,
     )
-    handler = make_handler(fleet_runner, opportunities_runner, shapes_runner, announcements_runner, sync_runner, resource_lookup_service)
+    handler = make_handler(
+        fleet_runner,
+        opportunities_runner,
+        shapes_runner,
+        announcements_runner,
+        sync_runner,
+        resource_lookup_service,
+        url_prefix,
+    )
     server = ThreadingHTTPServer((args.host, args.port), handler)
-    url = f"http://{args.host}:{args.port}/index.html"
+    url = f"http://{args.host}:{args.port}/{url_prefix}/index.html"
+    fallback_url = f"http://{args.host}:{args.port}/index.html"
     print(f"Serving OCI Tenancy Explorer at {url}")
+    print(f"Fallback root URL remains available at {fallback_url}")
     print(f"Refresh endpoints use profile '{args.profile}' and config '{args.config_file}'")
     try:
         server.serve_forever()

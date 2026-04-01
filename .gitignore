@@ -9,11 +9,15 @@ venv/
 
 # Local generated data
 fleet_data.json
+fleet_data_opportunities.json
+fleet_data_shapes.json
+fleet_data_announcements.json
 fleet_data.json.backup
 fleet_data.json.large
 fleet_data.local.json
-reboot_tracker.zip
 generate_large_test_fleet.py
+
+# Checked-in sanitized examples live under fleet_data_sample_json/
 
 # Optional local exports and logs
 *.csv

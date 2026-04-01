@@ -1,0 +1,96 @@
+{
+  "generatedAt": "2026-01-01T00:00:00Z",
+  "source": {
+    "tenancyName": "Example Tenancy",
+    "tenancyId": "ocid1.tenancy.oc1..exampleuniqueid",
+    "regions": [
+      "us-ashburn-1",
+      "us-phoenix-1"
+    ],
+    "compartmentCount": 1
+  },
+  "summary": {
+    "instanceCount": 2,
+    "regionCount": 2,
+    "shapeSeriesCount": 1,
+    "shapeCount": 1,
+    "dedicatedHostPlacementCount": 0
+  },
+  "instances": [
+    {
+      "region": "us-ashburn-1",
+      "availabilityDomain": "Example-ASH-AD-1",
+      "faultDomain": "FAULT-DOMAIN-1",
+      "shapeSeries": "E5",
+      "shape": "VM.Standard.E5.Flex",
+      "instanceName": "example-app-01",
+      "instanceOcid": "ocid1.instance.oc1.iad.exampleuniqueid1",
+      "instanceState": "RUNNING",
+      "compartmentName": "Example Compartment",
+      "compartmentOcid": "ocid1.compartment.oc1..exampleuniqueid",
+      "dedicatedVmHostOcid": ""
+    },
+    {
+      "region": "us-phoenix-1",
+      "availabilityDomain": "Example-PHX-AD-1",
+      "faultDomain": "FAULT-DOMAIN-2",
+      "shapeSeries": "E5",
+      "shape": "VM.Standard.E5.Flex",
+      "instanceName": "example-app-02",
+      "instanceOcid": "ocid1.instance.oc1.phx.exampleuniqueid2",
+      "instanceState": "RUNNING",
+      "compartmentName": "Example Compartment",
+      "compartmentOcid": "ocid1.compartment.oc1..exampleuniqueid",
+      "dedicatedVmHostOcid": ""
+    }
+  ],
+  "seriesSummary": [
+    {
+      "shapeSeries": "E5",
+      "instanceCount": 2,
+      "shapeCount": 1,
+      "regionCount": 2,
+      "dedicatedHostPlacementCount": 0
+    }
+  ],
+  "shapeSummary": [
+    {
+      "shape": "VM.Standard.E5.Flex",
+      "shapeSeries": "E5",
+      "instanceCount": 2,
+      "regionCount": 2,
+      "compartmentCount": 1
+    }
+  ],
+  "regionSummary": [
+    {
+      "region": "us-ashburn-1",
+      "instanceCount": 1,
+      "shapeCount": 1,
+      "seriesBreakdown": [
+        {
+          "shapeSeries": "E5",
+          "instanceCount": 1
+        }
+      ]
+    },
+    {
+      "region": "us-phoenix-1",
+      "instanceCount": 1,
+      "shapeCount": 1,
+      "seriesBreakdown": [
+        {
+          "shapeSeries": "E5",
+          "instanceCount": 1
+        }
+      ]
+    }
+  ],
+  "stateSummary": [
+    {
+      "instanceState": "RUNNING",
+      "instanceCount": 2
+    }
+  ],
+  "warnings": []
+}
