@@ -26,11 +26,19 @@ jobs:
 
       - name: Build check (Python compile)
         run: |
-          python -m py_compile build_fleet_data.py portal_server.py
+          python -m py_compile \
+            build_fleet_data.py \
+            build_shape_data.py \
+            build_announcements_data.py \
+            build_opportunities_data.py \
+            portal_server.py
 
       - name: Smoke test CLI entrypoints
         run: |
           python build_fleet_data.py --help
+          python build_shape_data.py --help
+          python build_announcements_data.py --help
+          python build_opportunities_data.py --help
           python portal_server.py --help
 
       - name: Validate sample JSON schema shape
@@ -39,7 +47,7 @@ jobs:
           import json
           from pathlib import Path
 
-          payload = json.loads(Path("fleet_data.sample.json").read_text())
+          payload = json.loads(Path("fleet_data_sample_json/fleet_data.sample.json").read_text())
           required_root = {"generatedAt", "generatedAtEpochMs", "schemaVersion", "source", "customers", "instances"}
           missing = sorted(required_root - payload.keys())
           if missing:
