@@ -1,0 +1,81 @@
+{
+  "generatedAt": "2026-01-01T00:00:00Z",
+  "source": {
+    "tenancyName": "Example Tenancy",
+    "tenancyId": "ocid1.tenancy.oc1..exampleuniqueid",
+    "region": "us-ashburn-1",
+    "detailMode": "get_announcement enrichment when permitted",
+    "latestInChainOnly": true
+  },
+  "summary": {
+    "announcementCount": 1,
+    "activeCount": 1,
+    "inactiveCount": 0,
+    "bannerCount": 1,
+    "serviceCount": 1,
+    "regionCount": 1,
+    "actionRequiredCount": 1,
+    "actionRecommendedCount": 0,
+    "topServices": [
+      {
+        "service": "Compute",
+        "count": 1
+      }
+    ],
+    "typeBreakdown": [
+      {
+        "type": "ACTION_REQUIRED",
+        "count": 1
+      }
+    ],
+    "detailAccessibleCount": 1,
+    "warningCount": 0
+  },
+  "announcements": [
+    {
+      "id": "ocid1.announcement.oc1..exampleuniqueid",
+      "summary": "Example maintenance notice for Compute resources.",
+      "description": "This is sanitized sample data for demos and screenshots only.",
+      "additionalInformation": "Review maintenance timing and validate operational readiness before the scheduled window.",
+      "announcementType": "ACTION_REQUIRED",
+      "lifecycleState": "ACTIVE",
+      "isBanner": true,
+      "services": [
+        "Compute"
+      ],
+      "affectedRegions": [
+        "us-ashburn-1"
+      ],
+      "referenceTicketNumber": "EXAMPLE-1001",
+      "environmentName": "Production",
+      "platformType": "OCI",
+      "chainId": "example-chain-id",
+      "timeCreated": "2026-01-01T00:00:00Z",
+      "timeUpdated": "2026-01-01T00:15:00Z",
+      "timeOne": {
+        "title": "Maintenance Start",
+        "type": "START_TIME",
+        "value": "2026-01-15T12:00:00Z"
+      },
+      "timeTwo": {
+        "title": "Maintenance End",
+        "type": "END_TIME",
+        "value": "2026-01-15T16:00:00Z"
+      },
+      "affectedResources": [
+        {
+          "resourceId": "ocid1.instance.oc1.region.exampleuniqueid",
+          "resourceName": "example-app-01",
+          "region": "us-ashburn-1"
+        }
+      ],
+      "detailSource": "detail"
+    }
+  ],
+  "warnings": [],
+  "notes": [
+    "Announcements are listed from the tenancy root compartment using OCI Announcements Service.",
+    "This snapshot requests only the latest visible announcement in each chain to reduce duplicate operational updates.",
+    "Announcement detail enrichment is best-effort and can vary based on IAM access to announcement details."
+  ]
+}

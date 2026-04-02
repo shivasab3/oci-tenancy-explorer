@@ -17,7 +17,7 @@ This project is intended to be stored in a private repository.
 ## Safe Files To Share
 
 - `oci_config.example`
-- `fleet_data.sample.json`
+- files under `fleet_data_sample_json/`
 - `README.md`
 - source files such as `build_fleet_data.py`, `portal_server.py`, and `index.html`
 
@@ -25,7 +25,7 @@ This project is intended to be stored in a private repository.
 
 - Use placeholder OCIDs in documentation and examples.
 - Keep customer exports and generated fleet snapshots local only.
-- If you need sample data for a demo or screenshot, use `fleet_data.sample.json` and sanitize the customer label, OCIDs, regions, and timestamps first.
+- If you need sample data for a demo or screenshot, use the sanitized files under `fleet_data_sample_json/` and review customer labels, OCIDs, regions, timestamps, URLs, and ticket identifiers before sharing.
 - Before every commit, review `git status` and confirm no customer or tenancy-specific data appears in tracked files.
 
 ## Recommended Check Before Pushing

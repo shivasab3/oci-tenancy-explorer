@@ -46,6 +46,8 @@ cd oci-tenancy-explorer
 2. Install Python dependency:
 
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
 python3 -m pip install oci
 ```
 

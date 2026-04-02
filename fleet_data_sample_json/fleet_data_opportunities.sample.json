@@ -1,0 +1,159 @@
+{
+  "generatedAt": "2026-01-01T00:00:00Z",
+  "generatedAtEpochMs": 1767225600000,
+  "schemaVersion": 1,
+  "source": {
+    "type": "oci-sdk",
+    "auth": "config",
+    "profile": "DEFAULT",
+    "regions": [
+      "us-ashburn-1",
+      "us-phoenix-1"
+    ]
+  },
+  "analysis": {
+    "scopeName": "Example Tenancy",
+    "summary": {
+      "resourceCount": 12,
+      "computeInstanceCount": 2,
+      "subscribedRegionCount": 2,
+      "activeRegionCount": 2,
+      "compartmentCount": 1,
+      "opportunityCount": 1,
+      "adoptedCheckCount": 1,
+      "gapCheckCount": 1
+    },
+    "inventory": {
+      "resourceTypes": {
+        "Instance": 2,
+        "Compartment": 1,
+        "Vcn": 1,
+        "Subnet": 2,
+        "Alarm": 1
+      },
+      "postgresWorkloadSignals": []
+    },
+    "metrics": {
+      "budgetCount": 0,
+      "costAnomalyMonitorCount": 0,
+      "cloudGuardTargetCount": 1,
+      "opsiWarehouseCount": 0,
+      "admKnowledgeBaseCount": 0,
+      "instanceCount": 2,
+      "alarmCount": 1,
+      "logGroupCount": 0,
+      "clusterCount": 0,
+      "nodePoolCount": 0,
+      "virtualNodePoolCount": 0,
+      "clusterAddonCount": 0,
+      "autoscalerAddonCount": 0,
+      "karpenterAddonCount": 0,
+      "bastionCount": 0,
+      "hostScanTargetCount": 0,
+      "containerScanTargetCount": 0,
+      "serviceConnectorCount": 0,
+      "autoScalingConfigCount": 0,
+      "dbSystemCount": 0,
+      "cloudVmClusterCount": 0,
+      "apmDomainCount": 0,
+      "loadBalancerCount": 0,
+      "networkLoadBalancerCount": 0,
+      "observabilityFootprintCount": 1,
+      "securityFootprintCount": 0,
+      "warningCount": 0,
+      "managedPostgresqlCount": 0,
+      "postgresWorkloadSignalCount": 0,
+      "resourceCount": 12,
+      "computeInstanceCount": 2,
+      "searchComputeResourceCount": 2
+    },
+    "categoryScores": [
+      {
+        "id": "automation",
+        "title": "Automation",
+        "score": 50,
+        "label": "Emerging",
+        "summary": "1 of 2 tracked capability checks in Automation currently show an observed OCI footprint."
+      }
+    ],
+    "opportunities": [
+      {
+        "id": "vss_gap",
+        "title": "Expand vulnerability scanning coverage",
+        "category": "Security",
+        "confidence": "High",
+        "priority": "Important",
+        "impact": "Improves security hygiene and gives the team clearer visibility into exposure over time.",
+        "summary": "The tenancy shows compute footprint, but no vulnerability scanning targets were detected.",
+        "recommendation": "A practical next step could be to review whether host or container scanning makes sense for the most business-critical workloads first.",
+        "evidence": [
+          "Host scan targets detected: 0.",
+          "Container scan targets detected: 0.",
+          "OKE clusters detected: 0."
+        ],
+        "impactedCount": 2,
+        "regions": [
+          "us-ashburn-1",
+          "us-phoenix-1"
+        ],
+        "resources": [
+          {
+            "label": "Vulnerability Scanning Documentation",
+            "url": "https://docs.oracle.com/en-us/iaas/scanning/home.htm",
+            "type": "Documentation"
+          }
+        ]
+      }
+    ],
+    "regionProfiles": [
+      {
+        "name": "us-ashburn-1",
+        "instanceCount": 1,
+        "alarmCount": 1,
+        "logGroupCount": 0,
+        "clusterCount": 0,
+        "nodePoolCount": 0,
+        "virtualNodePoolCount": 0,
+        "clusterAddonCount": 0,
+        "autoscalerAddonCount": 0,
+        "karpenterAddonCount": 0,
+        "bastionCount": 0,
+        "hostScanTargetCount": 0,
+        "containerScanTargetCount": 0,
+        "serviceConnectorCount": 0,
+        "autoScalingConfigCount": 0,
+        "dbSystemCount": 0,
+        "cloudVmClusterCount": 0,
+        "apmDomainCount": 0,
+        "loadBalancerCount": 0,
+        "networkLoadBalancerCount": 0,
+        "warnings": [],
+        "observabilityFootprintCount": 1,
+        "securityFootprintCount": 0,
+        "warningCount": 0,
+        "footprintScore": 50
+      }
+    ],
+    "checks": [
+      {
+        "id": "budgets",
+        "title": "Budgets Configured",
+        "category": "FinOps",
+        "status": "gap",
+        "confidence": "High",
+        "count": 0,
+        "summary": "0 OCI budget object(s) detected in the tenancy home region.",
+        "businessValue": "Budgets help customers put clear guardrails around cloud growth so spending stays aligned to business priorities.",
+        "evidence": [
+          "Direct regional compute scan detected 2 active compute instance(s) across subscribed regions."
+        ],
+        "scopeLabel": "Tenancy Home Region",
+        "regionalCounts": []
+      }
+    ],
+    "guardrails": [
+      "Insights in this area are based on observed OCI tenancy signals and current platform footprint, not a directive to consume a specific OCI service.",
+      "Confidence levels reflect how directly each insight is supported by the OCI data this opportunities scan was able to query."
+    ]
+  }
+}
